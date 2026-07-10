@@ -7,28 +7,40 @@ table_name = "inventory.db"
 
 
 # A function to add new items into the .db
+#A function that allows a new item to be added to the database
 def addNewItem():
-    connection = sqlite3.connect(table_name)
+    #Opens a connection to the database to access it and change it
+    connection = sqlite3.connect("inventory.db")
+    #Creates a cursor that allows interaction with the database
     cursor = connection.cursor()
 
 
     print("Please input the corresponding entry for registering a new product")
+    #Loops to prevent blank space entries
     while True:
         print("New Product Entry Name")
+        #Input from the user for the new product name
         newProdName = input(">>")
+        #Gets rid of all the spaces before & after the word
         newProdName = newProdName.strip()
+        #Checks if the entry is just blank
         if newProdName == "":
             print("Invalid Entry")
         else:
             break
+    #Loops to prevent unallowed answers
     while True:
         print("New Product Category")
         print("Clothing[1], Footwear[2], Accessories[3], Computers/Laptops[4], Phones[5], Audio & Video[6], Wearables[7], Furniture[8], Home Decor[9], Health/Beauty[10], Sports/Fitness[11], Toys[12], Food[13], Office Supplies[14]")
+        #Takes the user's input to see the category of the new product
         catChosen = input(">>")
+        #Checks to see which category the user selected
         if catChosen == "1":
+            
             newProdCat = "Clothing"
             break
         elif catChosen == "2":
+            
             newProdCat = "Footwear"
             break
         elif catChosen == "3":
@@ -68,44 +80,61 @@ def addNewItem():
             newProdCat = "Office Supplies"
             break
         else:
+            #Invalid option so it loops again
             print("Invalid Category") 
+    #Loops to prevent any incorrect options
     while True:
+        #Takes in the new products id
         print("New Product Entry ID")
         newProdID = input(">>")
+        #Gets rid of all of the empty spaces before and after any inputs
         newProdID = newProdID.strip()
+        #Checks if it's blank or valid
         if newProdID == "":
             print("Invalid ID")
         else:
             break
+    #Loops to make sure invalid options aren't inputted
     while True:
         print("New Product Current Amount In Stock")
         newProdStock = input(">>")
+        #Stops the user from putting a negative amount of stock for the product
         if int(newProdStock) < 0:
             print("Invalid Stock Amount")
         else:
             break
+    #Allows the user to input an optional id
     print("Optional Extra ID thing, Type N or n to skip")
     newOptionalID = input(">>")
 
-
+    #Checks to make sure the user put an ID or skipped it
     if newOptionalID == "N" or newOptionalID == "n":
         try:
+            #Uses cursor to add the new product to the database
             cursor.execute("INSERT INTO products (prodName, prodcat, prodID, prodStock) VALUES (?, ?, ?, ?)", (newProdName, newProdCat, newProdID, newProdStock))
+            #Commits the new addon to the database
             connection.commit()
             print("Product added successfully.")
+            #Closes the connection to keep it secure
+            connection.close()
+        #Make sures that the product ID doesn't already exist
         except sqlite3.IntegrityError:
             print("Error: A product with this ID already exists.")
+            #Closes the connection to keep it secure
+            connection.close()
     else:
         try:
+            #Adds the product if it has an optional ID
             cursor.execute("INSERT INTO products (prodName, prodcat, prodID, prodStock, prodopid) VALUES (?, ?, ?, ?, ?)", (newProdName, newProdCat, newProdID, newProdStock, newOptionalID))
+            #Adds the new product to the database
             connection.commit()
             print("Product added successfully with optional ID.")
+            #Closes the connection to keep the database secure
             connection.close()
         except sqlite3.IntegrityError:
             print("Error: A product with this ID already exists.")
+            #Closes the connection to keep it secure
             connection.close()
-
-
 
 
 def print_all_rows():
@@ -114,28 +143,39 @@ def print_all_rows():
     cursor = connection.cursor()
 
 
+    #Selecting every row from the databases table
     cursor.execute(f"SELECT * FROM {database_name}")
 
 
+    #Fetching all rows from cursor
     rows = cursor.fetchall()
 
 
+    #Made to look pretty. If theres no rows or products then state it
     if not rows:
         print("No products found in the database.")
         connection.close()
         return
    
+   # Page flipping system
+    #  page_size dictates how many objects will be shown per page
+    # total_pages figres out how many pages will be needed (ex: 23 / 10 = 2.3 rounds up to 3)
+    # page dictates what page you start on (starts at 0 by index, or the first page)
     page_size = 10
     total_pages = (len(rows) + page_size - 1) // page_size
     page = 0
 
 
     while True:
+        # start_index finds where the current page begins 
+        # end_index finds where the LAST page slice is
+        #current_rows takes only the rows for the current page
         start_index = page * page_size
         end_index = start_index + page_size
         current_rows = rows[start_index:end_index]
 
 
+        #Printing all the information, prints a page number, header, and each row in the slice
         print(f"\nPage {page + 1}/{total_pages}")
         print("Product Name | Product Category | Product ID | Product Stock | Optional ID")
         for row in current_rows:
@@ -146,13 +186,16 @@ def print_all_rows():
             break
 
 
+        #P moves to the next page, O to the past page, and E to exit
         print("\nOptions: [P] Next Page, [O] Past Page, [E]xit")
         choice = input("Enter your choice: ").strip().lower()
 
 
-        if choice == 'n' and page < total_pages - 1:
+
+        
+        if choice == 'p' and page < total_pages - 1:
             page += 1
-        elif choice == 'p' and page > 0:
+        elif choice == 'o' and page > 0:
             page -= 1
         elif choice == 'e':
             break
@@ -164,17 +207,23 @@ def print_all_rows():
     connection.close()
    
 def search_by_id(prodID):
+
+    #Establishing a connection with the database and creating a cursor object to execute SQL queries
     connection = sqlite3.connect("inventory.db")
     cursor = connection.cursor()
 
 
+    # Select from the table where the product id equals whatever the user inputs
     cursor.execute(f"SELECT * FROM {database_name} WHERE prodID = ?", (prodID,))
+    # Fetch ONE object using that ID 
     row = cursor.fetchone()
+    # If it's in the row, then print the object and it's information, if not, then to error proof state theres no product found with ID
     if row:
         print(f"Product with ID {prodID}: {f'{row[0]} \nProduct Category: {row[1]} \nProduct ID: {row[2]} \nProduct Stock: {str(row[3])} \nOptional ID: {row[4] if row[4] else 'Null'}'}")
     else:
         print(f"No product found with ID {prodID}")
    
+   # Close the connection
     connection.close()
 
 
@@ -198,34 +247,36 @@ def update_stock(prodID, new_stock):
 
 
 def delete_product(prodID):
+    #Opens a connection to be able to access and change the database
     connection = sqlite3.connect("inventory.db")
+    #Creates a cursor to be able to change the database
     cursor = connection.cursor()
 
-
+    #Counts the total number of items in the database
     cursor.execute(f"SELECT COUNT(*) FROM {database_name}")
+    #Saves the number to a variable for later use
     beforeDel = cursor.fetchall()[0]
    
 
-
+    #Tries to delete an object from the database
     cursor.execute(f"DELETE FROM {database_name} WHERE prodID = ?", (prodID,))
 
 
-    #always prints product not found even if it is found, need to fix this
-    #Instead check if the number of rows has change after deletion compared to before
-    #Javier fixed this, thank you Javier!
-
-
+    #Counts the total number of items in the database
     cursor.execute(f"SELECT COUNT(*) FROM {database_name}")
+    #Saves this number to a variable for later use
     afterDel = cursor.fetchall()[0]
    
+   #Compares the size of the database for before and after to see if it changed and if something is really deleted
     if beforeDel > afterDel:
         print("Product has been deleted")
     else:
         print("Product not found")
 
-
+    #Commits the changes and closes the connection for safety
     connection.commit()
     connection.close()
+
 
 
 while True:
