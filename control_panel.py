@@ -41,11 +41,11 @@ def print_all_rows():
     cursor.execute(f"SELECT * FROM {database_name}")
 
     rows = cursor.fetchall()
-    print("All rows in the database:")
+    print("All products in the database:")
     for row in rows:
         print(row)
     connection.close()
-
+    
 def search_by_id(prodID):
     connection = sqlite3.connect("inventory.db")
     cursor = connection.cursor()
@@ -64,10 +64,30 @@ def update_stock(prodID, new_stock):
     cursor = connection.cursor()
 
     cursor.execute(f"UPDATE {database_name} SET prodstock = ? WHERE prodID = ?", (new_stock, prodID))
+    row = cursor.fetchone()
+    if row:
+        print(f"Product with ID {prodID} updated to new stock: {new_stock}")
+    else:
+        print(f"No product found with ID {prodID}")
+
+    
     connection.commit()
     print("Stock updated successfully.")
     connection.close()
 
+def delete_product(prodID):
+    connection = sqlite3.connect("inventory.db")
+    cursor = connection.cursor()
+
+    cursor.execute(f"DELETE FROM {database_name} WHERE prodID = ?", (prodID,))
+    row = cursor.fetchone()
+    connection.commit()
+    if row:
+        print("Product has been deleted")
+    else:
+        print("Product not found")
+
+    connection.close()
 
 while True:
     print("\nMenu:")
@@ -75,9 +95,10 @@ while True:
     print("2. Add a new item")
     print("3. Search by ID")
     print("4. Update stock")
-    print("5. Exit")
+    print("5. Delete a product")
+    print("6. Exit")
 
-    choice = input("Enter your choice (1-5): ")
+    choice = input("Enter your choice (1-6): ")
 
     if choice == "1":
         print_all_rows()
@@ -91,8 +112,11 @@ while True:
         new_stock = input("Enter the new stock quantity: ")
         update_stock(prodID, new_stock)
     elif choice == "5":
+        prodID = input("Enter the product ID to delete: ")
+        delete_product(prodID)
+    elif choice == "6":
         print("Exiting the program.")
         break
     else:
-        print("Invalid choice. Please enter a number between 1 and 5.")
+        print("Invalid choice. Please enter a number between 1 and 6.")
 
