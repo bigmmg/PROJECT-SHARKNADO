@@ -42,6 +42,7 @@ def print_all_rows():
 
     rows = cursor.fetchall()
     print("All products in the database:")
+    print("Product Name | Product ID | Product Stock | Optional ID")
     for row in rows:
         print(row)
     connection.close()
@@ -64,7 +65,7 @@ def update_stock(prodID, new_stock):
     cursor = connection.cursor()
 
     cursor.execute(f"UPDATE {database_name} SET prodstock = ? WHERE prodID = ?", (new_stock, prodID))
-    row = cursor.fetchone()
+    row = cursor.fetchall()
     if row:
         print(f"Product with ID {prodID} updated to new stock: {new_stock}")
     else:
@@ -80,13 +81,14 @@ def delete_product(prodID):
     cursor = connection.cursor()
 
     cursor.execute(f"DELETE FROM {database_name} WHERE prodID = ?", (prodID,))
-    row = cursor.fetchone()
-    connection.commit()
+    row = cursor.fetchall()
+    #always prints product not found even if it is found, need to fix this
     if row:
         print("Product has been deleted")
     else:
         print("Product not found")
 
+    connection.commit()
     connection.close()
 
 while True:
