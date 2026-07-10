@@ -1,11 +1,14 @@
+#Importing sqlite3 in order to work directly with the database
 import sqlite3
 
-
+#Changing the database_name to be manipulated with in the .db files
 database_name = "products"
+table_name = "inventory.db"
 
 
+# A function to add new items into the .db
 def addNewItem():
-    connection = sqlite3.connect("inventory.db")
+    connection = sqlite3.connect(table_name)
     cursor = connection.cursor()
 
 
@@ -20,19 +23,52 @@ def addNewItem():
             break
     while True:
         print("New Product Category")
-        print("Tech[1], Clothing[2], Food[3] WIP")
+        print("Clothing[1], Footwear[2], Accessories[3], Computers/Laptops[4], Phones[5], Audio & Video[6], Wearables[7], Furniture[8], Home Decor[9], Health/Beauty[10], Sports/Fitness[11], Toys[12], Food[13], Office Supplies[14]")
         catChosen = input(">>")
         if catChosen == "1":
-            newProdCat = "Tech"
-            break
-        elif catChosen == "2":
             newProdCat = "Clothing"
             break
+        elif catChosen == "2":
+            newProdCat = "Footwear"
+            break
         elif catChosen == "3":
+            newProdCat = "Accessories"
+            break
+        elif catChosen == "4":
+            newProdCat = "Computer/Laptops"
+            break
+        elif catChosen == "5":
+            newProdCat = "Phones"
+            break
+        elif catChosen == "6":
+            newProdCat = "Audio & Video"
+            break
+        elif catChosen == "7":
+            newProdCat = "Wearables"
+            break
+        elif catChosen == "8":
+            newProdCat = "Furniture"
+            break
+        elif catChosen == "9":
+            newProdCat = "Home Decor"
+            break
+        elif catChosen == "10":
+            newProdCat = "Health/Beauty"
+            break
+        elif catChosen == "11":
+            newProdCat = "Sports/Fitness"
+            break
+        elif catChosen == "12":
+            newProdCat = "Toys"
+            break
+        elif catChosen == "13":
             newProdCat = "Food"
             break
+        elif catChosen == "14":
+            newProdCat = "Office Supplies"
+            break
         else:
-            print("Invalid Category")
+            print("Invalid Category") 
     while True:
         print("New Product Entry ID")
         newProdID = input(">>")
