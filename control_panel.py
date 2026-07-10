@@ -7,12 +7,44 @@ def addNewItem():
     cursor = connection.cursor()
 
     print("Please input the corresponding entry for registering a new product")
-    print("New Product Entry Name")
-    newProdName = input(">>")
-    print("New Product Entry ID")
-    newProdID = input(">>")
-    print("New Product Current Amount In Stock")
-    newProdStock = input(">>")
+    while True:
+        print("New Product Entry Name")
+        newProdName = input(">>")
+        newProdName = newProdName.strip()
+        if newProdName == "":
+            print("Invalid Entry")
+        else:
+            break
+    while True:
+        print("New Product Category")
+        print("Tech[1], Clothing[2], Food[3] WIP")
+        catChosen = input(">>")
+        if catChosen == "1":
+            newProdCat = "Tech"
+            break
+        elif catChosen == "2":
+            newProdCat = "Clothing"
+            break
+        elif catChosen == "3":
+            newProdCat = "Food"
+            break
+        else:
+            print("Invalid Category") 
+    while True:
+        print("New Product Entry ID")
+        newProdID = input(">>")
+        newProdID = newProdID.strip()
+        if newProdID == "":
+            print("Invalid ID")
+        else:
+            break
+    while True:
+        print("New Product Current Amount In Stock")
+        newProdStock = input(">>")
+        if int(newProdStock) < 0:
+            print("Invalid Stock Amount")
+        else:
+            break
     print("Optional Extra ID thing, Type N or n to skip")
     newOptionalID = input(">>")
 
@@ -80,10 +112,19 @@ def delete_product(prodID):
     connection = sqlite3.connect("inventory.db")
     cursor = connection.cursor()
 
+    cursor.execute(f"SELECT COUNT(*) FROM {database_name}")
+    beforeDel = cursor.fetchall()[0]
+    
+
     cursor.execute(f"DELETE FROM {database_name} WHERE prodID = ?", (prodID,))
-    row = cursor.fetchall()
+
     #always prints product not found even if it is found, need to fix this
-    if row:
+    #Instead check if the number of rows has change after deletion compared to before
+
+    cursor.execute(f"SELECT COUNT(*) FROM {database_name}")
+    afterDel = cursor.fetchall()[0]
+    
+    if beforeDel > afterDel:
         print("Product has been deleted")
     else:
         print("Product not found")
