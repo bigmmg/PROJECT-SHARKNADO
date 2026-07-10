@@ -17,16 +17,49 @@ def addNewItem():
             break
     while True:
         print("New Product Category")
-        print("Tech[1], Clothing[2], Food[3] WIP")
+        print("Clothing[1], Footwear[2], Accessories[3], Computers/Laptops[4], Phones[5], Audio & Video[6], Wearables[7], Furniture[8], Home Decor[9], Health/Beauty[10], Sports/Fitness[11], Toys[12], Food[13], Office Supplies[14]")
         catChosen = input(">>")
         if catChosen == "1":
-            newProdCat = "Tech"
-            break
-        elif catChosen == "2":
             newProdCat = "Clothing"
             break
+        elif catChosen == "2":
+            newProdCat = "Footwear"
+            break
         elif catChosen == "3":
+            newProdCat = "Accessories"
+            break
+        elif catChosen == "4":
+            newProdCat = "Computer/Laptops"
+            break
+        elif catChosen == "5":
+            newProdCat = "Phones"
+            break
+        elif catChosen == "6":
+            newProdCat = "Audio & Video"
+            break
+        elif catChosen == "7":
+            newProdCat = "Wearables"
+            break
+        elif catChosen == "8":
+            newProdCat = "Furniture"
+            break
+        elif catChosen == "9":
+            newProdCat = "Home Decor"
+            break
+        elif catChosen == "10":
+            newProdCat = "Health/Beauty"
+            break
+        elif catChosen == "11":
+            newProdCat = "Sports/Fitness"
+            break
+        elif catChosen == "12":
+            newProdCat = "Toys"
+            break
+        elif catChosen == "13":
             newProdCat = "Food"
+            break
+        elif catChosen == "14":
+            newProdCat = "Office Supplies"
             break
         else:
             print("Invalid Category") 
@@ -50,14 +83,14 @@ def addNewItem():
 
     if newOptionalID == "N" or newOptionalID == "n":
         try:
-            cursor.execute("INSERT INTO products (prodName, prodcat, prodID, prodStock) VALUES (?, ?, ?, ?)", (newProdName, newProdCat, newProdID, newProdStock))
+            cursor.execute("INSERT INTO products (prodName, prodID, prodStock) VALUES (?, ?, ?)", (newProdName, newProdID, newProdStock))
             connection.commit()
             print("Product added successfully.")
         except sqlite3.IntegrityError:
             print("Error: A product with this ID already exists.")
     else:
         try:
-            cursor.execute("INSERT INTO products (prodName, prodcat, prodID, prodStock, prodopid) VALUES (?, ?, ?, ?, ?)", (newProdName, newProdCat, newProdID, newProdStock, newOptionalID))
+            cursor.execute("INSERT INTO products (prodName, prodID, prodstock, prodopid) VALUES (?, ?, ?, ?)", (newProdName, newProdID, newProdStock, newOptionalID))
             connection.commit()
             print("Product added successfully with optional ID.")
             connection.close()
@@ -67,49 +100,16 @@ def addNewItem():
 
 
 def print_all_rows():
-    #Establishing a connection with the database and creating a cursor object to execute SQL queries
     connection = sqlite3.connect("inventory.db")
     cursor = connection.cursor()
 
     cursor.execute(f"SELECT * FROM {database_name}")
 
     rows = cursor.fetchall()
-
-    if not rows:
-        print("No products found in the database.")
-        connection.close()
-        return
-    
-    page_size = 10
-    total_pages = (len(rows) + page_size - 1) // page_size
-    page = 0
-
-    while True:
-        start_index = page * page_size
-        end_index = start_index + page_size
-        current_rows = rows[start_index:end_index]
-
-        print(f"\nPage {page + 1}/{total_pages}")
-        print("Product Name | Product Category | Product ID | Product Stock | Optional ID")
-        for row in current_rows:
-            print(f"{row[0]} | {row[1]} | {row[2]} | {str(row[3])} | {row[4] if row[4] else 'Null'}")
-
-        if total_pages == 1:
-            break
-
-        print("\nOptions: [P] Next Page, [O] Past Page, [E]xit")
-        choice = input("Enter your choice: ").strip().lower()
-
-        if choice == 'n' and page < total_pages - 1:
-            page += 1
-        elif choice == 'p' and page > 0:
-            page -= 1
-        elif choice == 'e':
-            break
-        else:
-            print("There are no more pages in that direction.")
-
-    connection.commit()
+    print("All products in the database:")
+    print("Product Name | Product ID | Product Stock | Optional ID")
+    for row in rows:
+        print(row)
     connection.close()
     
 def search_by_id(prodID):
@@ -119,7 +119,7 @@ def search_by_id(prodID):
     cursor.execute(f"SELECT * FROM {database_name} WHERE prodID = ?", (prodID,))
     row = cursor.fetchone()
     if row:
-        print(f"Product with ID {prodID}: {f'{row[0]} \nProduct Category: {row[1]} \nProduct ID: {row[2]} \nProduct Stock: {str(row[3])} \nOptional ID: {row[4] if row[4] else 'Null'}'}")
+        print(f"Product with ID {prodID}: {f'{row[0]} \nProduct ID: {row[1]} \nProduct Stock: {str(row[2])} \nOptional ID: {row[3] if row[3] else 'Null'}'}")
     else:
         print(f"No product found with ID {prodID}")
     
@@ -153,7 +153,6 @@ def delete_product(prodID):
 
     #always prints product not found even if it is found, need to fix this
     #Instead check if the number of rows has change after deletion compared to before
-    #Javier fixed this, thank you Javier!
 
     cursor.execute(f"SELECT COUNT(*) FROM {database_name}")
     afterDel = cursor.fetchall()[0]
@@ -167,7 +166,7 @@ def delete_product(prodID):
     connection.close()
 
 while True:
-    print("\nGoodwill Inventory Prototype System:")
+    print("\nMenu:")
     print("1. Print all items")
     print("2. Add a new item")
     print("3. Search by ID")
