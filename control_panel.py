@@ -50,14 +50,14 @@ def addNewItem():
 
     if newOptionalID == "N" or newOptionalID == "n":
         try:
-            cursor.execute("INSERT INTO products (prodName, prodID, prodStock) VALUES (?, ?, ?)", (newProdName, newProdID, newProdStock))
+            cursor.execute("INSERT INTO products (prodName, prodcat, prodID, prodStock) VALUES (?, ?, ?, ?)", (newProdName, newProdCat, newProdID, newProdStock))
             connection.commit()
             print("Product added successfully.")
         except sqlite3.IntegrityError:
             print("Error: A product with this ID already exists.")
     else:
         try:
-            cursor.execute("INSERT INTO products (prodName, prodID, prodstock, prodopid) VALUES (?, ?, ?, ?)", (newProdName, newProdID, newProdStock, newOptionalID))
+            cursor.execute("INSERT INTO products (prodName, prodcat, prodID, prodStock, prodopid) VALUES (?, ?, ?, ?, ?)", (newProdName, newProdCat, newProdID, newProdStock, newOptionalID))
             connection.commit()
             print("Product added successfully with optional ID.")
             connection.close()
@@ -74,7 +74,7 @@ def print_all_rows():
 
     rows = cursor.fetchall()
     print("All products in the database:")
-    print("Product Name | Product ID | Product Stock | Optional ID")
+    print("Product Name | Product Category | Product ID | Product Stock | Optional ID")
     for row in rows:
         print(row)
     connection.close()
@@ -86,7 +86,7 @@ def search_by_id(prodID):
     cursor.execute(f"SELECT * FROM {database_name} WHERE prodID = ?", (prodID,))
     row = cursor.fetchone()
     if row:
-        print(f"Product with ID {prodID}: {f'{row[0]} \nProduct ID: {row[1]} \nProduct Stock: {str(row[2])} \nOptional ID: {row[3] if row[3] else 'Null'}'}")
+        print(f"Product with ID {prodID}: {f'{row[0]} \nProduct Category: {row[1]} \nProduct ID: {row[2]} \nProduct Stock: {str(row[3])} \nOptional ID: {row[4] if row[4] else 'Null'}'}")
     else:
         print(f"No product found with ID {prodID}")
     
@@ -120,6 +120,7 @@ def delete_product(prodID):
 
     #always prints product not found even if it is found, need to fix this
     #Instead check if the number of rows has change after deletion compared to before
+    #Javier fixed this, thank you Javier!
 
     cursor.execute(f"SELECT COUNT(*) FROM {database_name}")
     afterDel = cursor.fetchall()[0]
