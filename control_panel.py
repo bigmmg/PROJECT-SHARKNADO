@@ -67,16 +67,49 @@ def addNewItem():
 
 
 def print_all_rows():
+    #Establishing a connection with the database and creating a cursor object to execute SQL queries
     connection = sqlite3.connect("inventory.db")
     cursor = connection.cursor()
 
     cursor.execute(f"SELECT * FROM {database_name}")
 
     rows = cursor.fetchall()
-    print("All products in the database:")
-    print("Product Name | Product Category | Product ID | Product Stock | Optional ID")
-    for row in rows:
-        print(row)
+
+    if not rows:
+        print("No products found in the database.")
+        connection.close()
+        return
+    
+    page_size = 10
+    total_pages = (len(rows) + page_size - 1) // page_size
+    page = 0
+
+    while True:
+        start_index = page * page_size
+        end_index = start_index + page_size
+        current_rows = rows[start_index:end_index]
+
+        print(f"\nPage {page + 1}/{total_pages}")
+        print("Product Name | Product Category | Product ID | Product Stock | Optional ID")
+        for row in current_rows:
+            print(f"{row[0]} | {row[1]} | {row[2]} | {str(row[3])} | {row[4] if row[4] else 'Null'}")
+
+        if total_pages == 1:
+            break
+
+        print("\nOptions: [P] Next Page, [O] Past Page, [E]xit")
+        choice = input("Enter your choice: ").strip().lower()
+
+        if choice == 'n' and page < total_pages - 1:
+            page += 1
+        elif choice == 'p' and page > 0:
+            page -= 1
+        elif choice == 'e':
+            break
+        else:
+            print("There are no more pages in that direction.")
+
+    connection.commit()
     connection.close()
     
 def search_by_id(prodID):
@@ -134,7 +167,7 @@ def delete_product(prodID):
     connection.close()
 
 while True:
-    print("\nMenu:")
+    print("\nGoodwill Inventory Prototype System:")
     print("1. Print all items")
     print("2. Add a new item")
     print("3. Search by ID")
