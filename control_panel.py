@@ -26,7 +26,7 @@ class Inventory:
         with sqlite3.connect(self.db_file) as connection:
             cursor = connection.cursor()
 
-            if optional_id is None:
+            if optional_id in (None, "", "None"):
                 cursor.execute(
                     f"INSERT INTO {self.table_name} (prodName, prodcat, prodID, prodStock) "
                     "VALUES (?, ?, ?, ?)",
@@ -77,7 +77,7 @@ class Inventory:
             )
             connection.commit()
             return cursor.rowcount > 0
-        
+
     def update_name(self, prod_id, new_name):
         # Returns true if a row is found and false if not; meant to update a products name
         with sqlite3.connect(self.db_file) as connection:
@@ -88,6 +88,16 @@ class Inventory:
             connection.commit()
             return cursor.rowcount > 0
 
+    def sort_by(self, category):
+        # Returns every row ordered by the given column
+        columns = {"prodname", "prodcat", "prodid", "prodstock"}
+        if category not in columns:
+            raise ValueError(f"Invalid sort column: {category}")
+
+        with sqlite3.connect(self.db_file) as connection:
+            cursor = connection.cursor()
+            cursor.execute(f"SELECT * FROM {self.table_name} ORDER BY {category}")
+            return cursor.fetchall()
 
 
 class InventoryCLI:
@@ -109,11 +119,17 @@ class InventoryCLI:
         "14": "Office Supplies",
     }
 
+    # Menu used for the sort-by feature
+    SORT_OPTIONS = {
+        "1": ("Name", "prodname"),
+        "2": ("Category", "prodcat"),
+        "3": ("Product ID", "prodid"),
+        "4": ("Stock", "prodstock"),
+    }
 
     # __init__ to initialize the self and inventory classes
     def __init__(self, inventory: Inventory):
         self.inventory = inventory
-
 
     # Function used to prompt name
     def prompt_name(self):
@@ -183,9 +199,25 @@ Food[13]\nOffice Supplies[14]""")
         except sqlite3.IntegrityError:
             print("Error: A product with this ID already exists.")
 
-    # Method that prints all rows of items
+    # Helper that prints a single page of rows in the shared table format
+    def print_rows_page(self, rows, page, total_pages):
+        page_size = 10
+        start_index = page * page_size
+        end_index = start_index + page_size
+        current_rows = rows[start_index:end_index]
+
+        print(f"\nPage {page + 1}/{total_pages}")
+        print("Product Name | Product Category | Product ID | Product Stock | Optional ID")
+        for row in current_rows:
+            print(f"{row[0]} | {row[1]} | {row[2]} | {str(row[3])} | {row[4] if row[4] else 'Null'}")
+
+    # Method that prints all rows of items, with an optional sort applied first
     def print_all_rows(self):
-        rows = self.inventory.get_all_rows()
+        sort_choice = self.prompt_sort_choice()
+        if sort_choice is None:
+            rows = self.inventory.get_all_rows()
+        else:
+            rows = self.inventory.sort_by(sort_choice)
 
         if not rows:
             print("No products found in the database.")
@@ -196,14 +228,7 @@ Food[13]\nOffice Supplies[14]""")
         page = 0
 
         while True:
-            start_index = page * page_size
-            end_index = start_index + page_size
-            current_rows = rows[start_index:end_index]
-
-            print(f"\nPage {page + 1}/{total_pages}")
-            print("Product Name | Product Category | Product ID | Product Stock | Optional ID")
-            for row in current_rows:
-                print(f"{row[0]} | {row[1]} | {row[2]} | {str(row[3])} | {row[4] if row[4] else 'Null'}")
+            self.print_rows_page(rows, page, total_pages)
 
             if total_pages == 1:
                 break
@@ -219,6 +244,18 @@ Food[13]\nOffice Supplies[14]""")
                 break
             else:
                 print("There are no more pages in that direction.")
+
+    # Method run after printing all items in order to sort by given category
+    def prompt_sort_choice(self):
+        print("\nSort by:")
+        print("Name[1]\nCategory[2]\nProduct ID[3]\nStock[4]\nNo Sort[N]")
+        choice = input(">>").strip().lower()
+        if choice in ("n", ""):
+            return None
+        if choice in self.SORT_OPTIONS:
+            return self.SORT_OPTIONS[choice][1]
+        print("Invalid choice, showing unsorted results.")
+        return None
 
     # Method for searching a product by ID
     def search_by_id(self):
@@ -238,14 +275,45 @@ Food[13]\nOffice Supplies[14]""")
     # Method for updating the stock of an item
     def update_stock(self):
         prod_id = input("Enter the product ID to update: ").strip()
-        new_stock = input("Enter the new stock quantity: ").strip()
-        if not new_stock.isdigit():
-            print("Invalid stock number.")
+        row = self.inventory.search_by_id(prod_id)
+        if not row:
+            print(f"No product found with ID {prod_id}")
             return
-            
-        updated = self.inventory.update_stock(prod_id, int(new_stock))
+
+        current_stock = row[3]
+        print(f"Current stock for {prod_id}: {current_stock}")
+        print("[S] Set exact stock value, [+] Increase stock, [-] Decrease stock")
+        mode = input("Enter your choice: ").strip().lower()
+
+        if mode == "s":
+            new_stock = input("Enter the new stock quantity: ").strip()
+            if not new_stock.isdigit():
+                print("Invalid stock number.")
+                return
+            final_stock = int(new_stock)
+        elif mode == "+":
+            amount = input("Enter the amount to increase stock by: ").strip()
+            if not amount.isdigit():
+                print("Invalid stock number.")
+                return
+            final_stock = current_stock + int(amount)
+        elif mode == "-":
+            amount = input("Enter the amount to decrease stock by: ").strip()
+            if not amount.isdigit():
+                print("Invalid stock number.")
+                return
+            decrement = int(amount)
+            if decrement > current_stock:
+                print("Cannot reduce stock below 0")
+                return
+            final_stock = current_stock - decrement
+        else:
+            print("Invalid choice.")
+            return
+
+        updated = self.inventory.update_stock(prod_id, final_stock)
         if updated:
-            print(f"Product with ID {prod_id} updated to new stock: {new_stock}")
+            print(f"Product with ID {prod_id} updated to new stock: {final_stock}")
         else:
             print(f"No product found with ID {prod_id}")
 
@@ -300,7 +368,7 @@ Food[13]\nOffice Supplies[14]""")
             else:
                 print("Invalid choice. Please enter a number between 1 and 7.")
 
-# Launches the command-line interface and intializes the app
+# Launches the CLI and intializes the app
 if __name__ == "__main__":
     inventory = Inventory()
     cli = InventoryCLI(inventory)
