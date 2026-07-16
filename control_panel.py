@@ -1,5 +1,8 @@
 import sqlite3
+import time
 
+#ADD EXTRA NOTES ON OBJECTS
+#REPORTING FEATURES / TIME PROGRAMMING
 
 class Inventory:
     # Defining the __init__ function, sets the db_file name table_name based on information passed
