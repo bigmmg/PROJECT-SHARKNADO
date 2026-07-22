@@ -1,7 +1,6 @@
 import sqlite3
 import time
 
-#ADD EXTRA NOTES ON OBJECTS
 #REPORTING FEATURES / TIME PROGRAMMING
 
 class Inventory:
@@ -16,7 +15,8 @@ class Inventory:
         with sqlite3.connect(self.db_file) as connection:
             cursor = connection.cursor()
             cursor.execute(f'''CREATE TABLE IF NOT EXISTS {self.table_name}
-                   ( prodname TEXT NOT NULL,
+                   (prodname TEXT NOT NULL,
+                    timemade TEXT NOT NULL,
                    prodcat TEXT NOT NULL,
                    prodid TEXT PRIMARY KEY NOT NULL,
                    prodstock INTEGER NOT NULL,
@@ -24,22 +24,22 @@ class Inventory:
             connection.commit()
             # Removed manual connection.close() to let 'with' manage it safely
 
-    def add_item(self, name, category, prod_id, stock, optional_id=None):
+    def add_item(self, name, timemade, category, prod_id, stock, optional_id=None):
         # Added 'f' prefix to convert these into f-strings for self.table_name
         with sqlite3.connect(self.db_file) as connection:
             cursor = connection.cursor()
 
             if optional_id in (None, "", "None"):
                 cursor.execute(
-                    f"INSERT INTO {self.table_name} (prodName, prodcat, prodID, prodStock) "
-                    "VALUES (?, ?, ?, ?)",
-                    (name, category, prod_id, stock),
+                    f"INSERT INTO {self.table_name} (prodName, timemade, prodcat, prodID, prodStock) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (name, timemade, category, prod_id, stock),
                 )
             else:
                 cursor.execute(
-                    f"INSERT INTO {self.table_name} (prodName, prodcat, prodID, prodStock, prodopid) "
-                    "VALUES (?, ?, ?, ?, ?)",
-                    (name, category, prod_id, stock, optional_id),
+                    f"INSERT INTO {self.table_name} (prodName, timemade, prodcat, prodID, prodStock, prodopid) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (name, timemade, category, prod_id, stock, optional_id),
                 )
             connection.commit()
 
@@ -59,6 +59,16 @@ class Inventory:
                 f"SELECT * FROM {self.table_name} WHERE prodID = ?", (prod_id,)
             )
             return cursor.fetchone()
+        
+    def update_time(self, prod_id, new_time):
+        with sqlite3.connect(self.db_file) as connection:
+            cursor = connection.cursor()
+            cursor.execute(
+                f"UPDATE {self.table_name} SET timemade = ? WHERE prodID = ?",
+                (new_time, prod_id),
+            )
+            connection.commit()
+            return cursor.rowcount > 0
 
     def update_stock(self, prod_id, new_stock):
         # Returns true if a row is found and false if not; meant to update stock
@@ -93,7 +103,7 @@ class Inventory:
 
     def sort_by(self, category):
         # Returns every row ordered by the given column
-        columns = {"prodname", "prodcat", "prodid", "prodstock"}
+        columns = {"prodname", "timemade", "prodcat", "prodid", "prodstock"}
         if category not in columns:
             raise ValueError(f"Invalid sort column: {category}")
 
@@ -125,9 +135,10 @@ class InventoryCLI:
     # Menu used for the sort-by feature
     SORT_OPTIONS = {
         "1": ("Name", "prodname"),
-        "2": ("Category", "prodcat"),
-        "3": ("Product ID", "prodid"),
-        "4": ("Stock", "prodstock"),
+        "2" :("Time", "timemade"),
+        "3": ("Category", "prodcat"),
+        "4": ("Product ID", "prodid"),
+        "5": ("Stock", "prodstock"),
     }
 
     # __init__ to initialize the self and inventory classes
@@ -144,6 +155,13 @@ class InventoryCLI:
             else:
                 return name
 
+    # Function used to grab the approx time an item was catalogued or changed
+    def time_setter(self):
+        clock = time.localtime()
+        format_min = time.strftime("%M", clock)
+        clock_formatted = f"{clock.tm_mon}-{clock.tm_mday}-{clock.tm_year} at {clock.tm_hour}:{format_min}"
+        return clock_formatted
+    
     # Function used to prompt category
     def prompt_category(self):
         while True:
@@ -188,13 +206,14 @@ Food[13]\nOffice Supplies[14]""")
     # Method that combines all the prompts to add an item
     def add_item(self):
         name = self.prompt_name()
+        timemade = self.time_setter()
         category = self.prompt_category()
         prod_id = self.prompt_prod_id()
         stock = self.prompt_stock()
         optional_id = self.prompt_optional_id()
 
         try:
-            self.inventory.add_item(name, category, prod_id, stock, optional_id)
+            self.inventory.add_item(name, timemade, category, prod_id, stock, optional_id)
             if optional_id is None:
                 print("Product added successfully.")
             else:
@@ -210,7 +229,7 @@ Food[13]\nOffice Supplies[14]""")
         current_rows = rows[start_index:end_index]
 
         print(f"\nPage {page + 1}/{total_pages}")
-        print("Product Name | Product Category | Product ID | Product Stock | Optional ID")
+        print("Product Name | Last Time Accessed | Product Category | Product ID | Product Stock | Optional ID")
         for row in current_rows:
             print(f"{row[0]} | {row[1]} | {row[2]} | {str(row[3])} | {row[4] if row[4] else 'Null'}")
 
@@ -251,7 +270,7 @@ Food[13]\nOffice Supplies[14]""")
     # Method run after printing all items in order to sort by given category
     def prompt_sort_choice(self):
         print("\nSort by:")
-        print("Name[1]\nCategory[2]\nProduct ID[3]\nStock[4]\nNo Sort[N]")
+        print("Name[1]\nTime[2]\nCategory[3]\nProduct ID[4]\nStock[5]\nNo Sort[N]")
         choice = input(">>").strip().lower()
         if choice in ("n", ""):
             return None
@@ -315,8 +334,13 @@ Food[13]\nOffice Supplies[14]""")
             return
 
         updated = self.inventory.update_stock(prod_id, final_stock)
-        if updated:
+
+        new_time = self.time_setter()
+        updated_time = self.inventory.update_time(prod_id, new_time)
+
+        if updated and updated_time:
             print(f"Product with ID {prod_id} updated to new stock: {final_stock}")
+            
         else:
             print(f"No product found with ID {prod_id}")
 
@@ -334,7 +358,11 @@ Food[13]\nOffice Supplies[14]""")
         prod_id = input("Enter the product ID to change the name: ").strip()
         new_name = input("Enter the new name for the product: ").strip()
         changed_name = self.inventory.update_name(prod_id, new_name)
-        if changed_name:
+
+        new_time = self.time_setter()
+        updated_time = self.inventory.update_time(prod_id, new_time)
+
+        if changed_name and updated_time:
             print(f"Product has had name changed to: {new_name}")
         else:
             print("Product not found")
@@ -347,8 +375,8 @@ Food[13]\nOffice Supplies[14]""")
             print("2. Add a new item")
             print("3. Search by ID")
             print("4. Update stock")
-            print("5. Delete a product")
-            print("6. Update a name")
+            print("5. Update a name")
+            print("6. Delete a product")
             print("7. Exit")
 
             choice = input("Enter your choice (1-7): ").strip()
@@ -362,9 +390,9 @@ Food[13]\nOffice Supplies[14]""")
             elif choice == "4":
                 self.update_stock()
             elif choice == "5":
-                self.delete_product()
-            elif choice == "6":
                 self.update_name()
+            elif choice == "6":
+                self.delete_product()
             elif choice == "7":
                 print("Exiting the program.")
                 break
