@@ -1,7 +1,7 @@
 import sqlite3
 import time
 import customtkinter as ctk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 
 # Set GUI Theme
 ctk.set_appearance_mode("System")  # Options: "System", "Dark", "Light"
@@ -125,7 +125,7 @@ class InventoryGUI(ctk.CTk):
         self.inventory = inventory
 
         self.title("Goodwill Inventory Management System")
-        self.geometry("950x650")
+        self.geometry("980x650")
         self.minsize(850, 550)
 
         # Configure Main Grid Layout
@@ -193,7 +193,7 @@ class InventoryGUI(ctk.CTk):
         self.sort_option.pack(side="right", padx=10)
         ctk.CTkLabel(control_frame, text="Sort By:").pack(side="right", padx=2)
 
-        # Table Display (Using standard ttk.Treeview styled for CustomTkinter)
+        # Table Display
         table_frame = ctk.CTkFrame(self.tab_view_all)
         table_frame.grid(row=1, column=0, padx=10, pady=5, sticky="nsew")
         table_frame.grid_columnconfigure(0, weight=1)
@@ -218,12 +218,29 @@ class InventoryGUI(ctk.CTk):
         self.tree.configure(yscrollcommand=scrollbar.set)
         scrollbar.grid(row=0, column=1, sticky="ns")
 
-        # Bottom Action Bar (Update / Delete)
+        # Bottom Action Bar (Update / Delete / Export / View Opt ID)
         action_frame = ctk.CTkFrame(self.tab_view_all)
         action_frame.grid(row=2, column=0, padx=10, pady=10, sticky="ew")
 
-        ctk.CTkButton(action_frame, text="Update Stock", command=self.open_update_stock_dialog).pack(side="left", padx=10, pady=10)
-        ctk.CTkButton(action_frame, text="Update Name", command=self.open_update_name_dialog).pack(side="left", padx=10, pady=10)
+        ctk.CTkButton(action_frame, text="Update Stock", command=self.open_update_stock_dialog).pack(side="left", padx=5, pady=10)
+        ctk.CTkButton(action_frame, text="Update Name", command=self.open_update_name_dialog).pack(side="left", padx=5, pady=10)
+        
+        ctk.CTkButton(
+            action_frame,
+            text="View Optional ID",
+            fg_color="#34495e",
+            hover_color="#2c3e50",
+            command=self.show_optional_id
+        ).pack(side="left", padx=5, pady=10)
+
+        ctk.CTkButton(
+            action_frame, 
+            text="Export to TXT", 
+            fg_color="#27ae60", 
+            hover_color="#2ea043", 
+            command=self.export_to_txt
+        ).pack(side="left", padx=5, pady=10)
+
         ctk.CTkButton(action_frame, text="Delete Product", fg_color="#c0392b", hover_color="#e74c3c", command=self.delete_item).pack(side="right", padx=10, pady=10)
 
     # ------------------------------------------
@@ -233,7 +250,6 @@ class InventoryGUI(ctk.CTk):
         form_frame = ctk.CTkFrame(self.tab_add_item)
         form_frame.pack(padx=40, pady=20, fill="both", expand=True)
 
-        # Form Inputs
         ctk.CTkLabel(form_frame, text="Product Name:").grid(row=0, column=0, padx=20, pady=12, sticky="w")
         self.entry_name = ctk.CTkEntry(form_frame, width=250)
         self.entry_name.grid(row=0, column=1, padx=20, pady=12)
@@ -254,7 +270,6 @@ class InventoryGUI(ctk.CTk):
         self.entry_opt_id = ctk.CTkEntry(form_frame, width=250)
         self.entry_opt_id.grid(row=4, column=1, padx=20, pady=12)
 
-        # Submit Button
         btn_add = ctk.CTkButton(form_frame, text="Add Product to Database", command=self.add_item, width=200, height=40)
         btn_add.grid(row=5, column=0, columnspan=2, pady=25)
 
@@ -267,7 +282,6 @@ class InventoryGUI(ctk.CTk):
             self.tree.delete(item)
 
         for row in rows:
-            # Handle empty optional IDs cleanly
             formatted_row = list(row)
             if not formatted_row[5] or formatted_row[5] == "None":
                 formatted_row[5] = "N/A"
@@ -334,7 +348,7 @@ class InventoryGUI(ctk.CTk):
             self.entry_opt_id.delete(0, 'end')
             
             self.refresh_table()
-            self.tabview.set("View & Manage Inventory")
+            
         except sqlite3.IntegrityError:
             messagebox.showerror("Database Error", f"Product ID '{prod_id}' already exists!")
 
@@ -345,6 +359,79 @@ class InventoryGUI(ctk.CTk):
             return None
         row_values = self.tree.item(selected_item[0], 'values')
         return row_values[3]  # Index 3 is prodID
+
+    def show_optional_id(self):
+        """MOVED FROM Inventory CLASS TO GUI CLASS TO FIX THE BUG"""
+        prod_id = self.get_selected_product_id()
+        if not prod_id:
+            return
+
+        row = self.inventory.search_by_id(prod_id)
+        if row:
+            product_name = row[0]
+            opt_id = row[5]
+
+            if not opt_id or opt_id in ("None", ""):
+                opt_id_text = "No Optional ID assigned to this item."
+            else:
+                opt_id_text = opt_id
+
+            messagebox.showinfo(
+                title=f"Optional ID — {product_name}",
+                message=f"Product Name: {product_name}\nProduct ID: {prod_id}\n\nOptional Extra ID:\n{opt_id_text}"
+            )
+
+    def export_to_txt(self):
+        """Exports all items visible in the treeview into a clean text file."""
+        children = self.tree.get_children()
+        if not children:
+            messagebox.showwarning("Export Failed", "There is no data in the table to export!")
+            return
+
+        # Prompt user for save destination
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".txt",
+            filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")],
+            title="Save Inventory Report As"
+        )
+
+        if not file_path:
+            return  # User canceled save dialog
+
+        try:
+            with open(file_path, "w", encoding="utf-8") as file:
+                # Header Section
+                file.write("========================================================================================\n")
+                file.write("                             GOODWILL INVENTORY REPORT                                  \n")
+                file.write(f" Generated On: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                file.write("==============F==========================================================================\n\n")
+
+                # Column Headers with Formatting Widths
+                header_fmt = "{:<22} {:<22} {:<18} {:<12} {:<8} {:<15}\n"
+                file.write(header_fmt.format("Name", "Time Modified", "Category", "Product ID", "Stock", "Optional ID"))
+                file.write("-" * 100 + "\n")
+
+                # Row Data
+                for child in children:
+                    row_values = self.tree.item(child, 'values')
+                    file.write(
+                        "{:<22} {:<22} {:<18} {:<12} {:<8} {:<15}\n".format(
+                            str(row_values[0])[:20],  # Truncate if long
+                            str(row_values[1])[:20],
+                            str(row_values[2])[:16],
+                            str(row_values[3])[:10],
+                            str(row_values[4]),
+                            str(row_values[5])[:14]
+                        )
+                    )
+
+                file.write("\n" + "=" * 100 + "\n")
+                file.write(f"Total Items Exported: {len(children)}\n")
+
+            messagebox.showinfo("Export Successful", f"Data exported successfully to:\n{file_path}")
+
+        except Exception as e:
+            messagebox.showerror("Export Error", f"Failed to save file:\n{str(e)}")
 
     def open_update_stock_dialog(self):
         prod_id = self.get_selected_product_id()
@@ -391,9 +478,6 @@ class InventoryGUI(ctk.CTk):
             messagebox.showinfo("Deleted", "Product deleted successfully.")
 
 
-# ==========================================
-# MAIN EXECUTION
-# ==========================================
 if __name__ == "__main__":
     app_inventory = Inventory()
     app = InventoryGUI(app_inventory)

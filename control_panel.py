@@ -1,5 +1,6 @@
 import sqlite3
 import time
+import csv
 
 #REPORTING FEATURES / TIME PROGRAMMING
 
@@ -231,9 +232,57 @@ Food[13]\nOffice Supplies[14]""")
         print(f"\nPage {page + 1}/{total_pages}")
         print("Product Name | Last Time Accessed | Product Category | Product ID | Product Stock | Optional ID")
         for row in current_rows:
-            print(f"{row[0]} | {row[1]} | {row[2]} | {str(row[3])} | {row[4] if row[4] else 'Null'}")
+            print(f"{row[0]} | {row[1]} | {row[2]} | {row[3]} | {str(row[4])} | {row[5] if row[5] else 'Null'}")
 
     # Method that prints all rows of items, with an optional sort applied first
+
+    def export_file(self):
+            sort_choice = self.prompt_sort_choice()
+    
+            if sort_choice is None:
+                rows = self.inventory.get_all_rows()
+            else:
+                rows = self.inventory.sort_by(sort_choice)
+    
+            if not rows:
+                print("No rows to export.")
+                return
+    
+            filename = input("Please enter the name for the CSV file:")
+            if not filename:
+                filename = "inventory_output.csv"
+            elif not filename.endswith(".csv"):
+                filename += ".csv"
+    
+            try:
+                with open(filename, mode="w", newline="", encoding="utf-8") as file:
+                    writer = csv.writer(file)
+    
+                    writer.writerow([
+                    "Product Name",
+                    "Last Time Accessed",
+                    "Product Category",
+                    "Product ID",
+                    "Stock Quantity",
+                    "Optional ID"
+                    ])
+    
+                    for row in rows:
+                        writer.writerow([
+                        row[0],
+                        row[1],
+                        row[2],
+                        row[3],
+                        row[4],
+                        row[5] if row[5] else ""
+                        ])
+    
+                    print(f"Successfuly exported items to file!")
+    
+            except Exception as e:
+                print(f"An error has occurred while exporting the file: {e}")
+
+        
     def print_all_rows(self):
         sort_choice = self.prompt_sort_choice()
         if sort_choice is None:
@@ -267,6 +316,7 @@ Food[13]\nOffice Supplies[14]""")
             else:
                 print("There are no more pages in that direction.")
 
+
     # Method run after printing all items in order to sort by given category
     def prompt_sort_choice(self):
         print("\nSort by:")
@@ -286,10 +336,11 @@ Food[13]\nOffice Supplies[14]""")
         if row:
             print(
                 f"Product with ID {prod_id}: {row[0]}\n"
-                f"Product Category: {row[1]}\n"
-                f"Product ID: {row[2]}\n"
-                f"Product Stock: {row[3]}\n"
-                f"Optional ID: {row[4] if row[4] else 'Null'}"
+                f"Time Updated: {row[1]}\n"
+                f"Product Category: {row[2]}\n"
+                f"Product ID: {row[3]}\n"
+                f"Product Stock: {row[4]}\n"
+                f"Optional: {row[5] if row[5] else 'Null'}"
             )
         else:
             print(f"No product found with ID {prod_id}")
@@ -377,7 +428,8 @@ Food[13]\nOffice Supplies[14]""")
             print("4. Update stock")
             print("5. Update a name")
             print("6. Delete a product")
-            print("7. Exit")
+            print("7: Export a CSV File")
+            print("8: Close the program")
 
             choice = input("Enter your choice (1-7): ").strip()
 
@@ -394,10 +446,12 @@ Food[13]\nOffice Supplies[14]""")
             elif choice == "6":
                 self.delete_product()
             elif choice == "7":
+                self.export_file()
+            elif choice == "8":
                 print("Exiting the program.")
                 break
             else:
-                print("Invalid choice. Please enter a number between 1 and 7.")
+                print("Invalid choice. Please enter a number between 1 and 8.")
 
 # Launches the CLI and intializes the app
 if __name__ == "__main__":
