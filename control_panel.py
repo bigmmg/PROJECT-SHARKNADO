@@ -431,7 +431,7 @@ Food[13]\nOffice Supplies[14]""")
             print("7: Export a CSV File")
             print("8: Close the program")
 
-            choice = input("Enter your choice (1-7): ").strip()
+            choice = input("Enter your choice (1-8): ").strip()
 
             if choice == "1":
                 self.print_all_rows()

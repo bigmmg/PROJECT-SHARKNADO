@@ -1,11 +1,12 @@
 import sqlite3
 import time
+import csv
 import customtkinter as ctk
 from tkinter import ttk, messagebox, filedialog
 
 # Set GUI Theme
 ctk.set_appearance_mode("System")  # Options: "System", "Dark", "Light"
-ctk.set_default_color_theme("blue")  # Options: "blue", "green", "dark-blue"
+ctk.set_default_color_theme("dark-blue")  # Options: "blue", "green", "dark-blue"
 
 
 # ==========================================
@@ -235,10 +236,10 @@ class InventoryGUI(ctk.CTk):
 
         ctk.CTkButton(
             action_frame, 
-            text="Export to TXT", 
+            text="Export to CSV", 
             fg_color="#27ae60", 
             hover_color="#2ea043", 
-            command=self.export_to_txt
+            command=self.export_to_csv
         ).pack(side="left", padx=5, pady=10)
 
         ctk.CTkButton(action_frame, text="Delete Product", fg_color="#c0392b", hover_color="#e74c3c", command=self.delete_item).pack(side="right", padx=10, pady=10)
@@ -361,7 +362,6 @@ class InventoryGUI(ctk.CTk):
         return row_values[3]  # Index 3 is prodID
 
     def show_optional_id(self):
-        """MOVED FROM Inventory CLASS TO GUI CLASS TO FIX THE BUG"""
         prod_id = self.get_selected_product_id()
         if not prod_id:
             return
@@ -381,57 +381,53 @@ class InventoryGUI(ctk.CTk):
                 message=f"Product Name: {product_name}\nProduct ID: {prod_id}\n\nOptional Extra ID:\n{opt_id_text}"
             )
 
-    def export_to_txt(self):
-        """Exports all items visible in the treeview into a clean text file."""
+    def export_to_csv(self):
+        """Exports all items visible in the treeview into a standard CSV file."""
         children = self.tree.get_children()
         if not children:
             messagebox.showwarning("Export Failed", "There is no data in the table to export!")
             return
 
-        # Prompt user for save destination
+        # Prompt user for CSV save destination
         file_path = filedialog.asksaveasfilename(
-            defaultextension=".txt",
-            filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")],
-            title="Save Inventory Report As"
+            defaultextension=".csv",
+            filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")],
+            title="Save Inventory CSV Report As"
         )
 
         if not file_path:
             return  # User canceled save dialog
 
         try:
-            with open(file_path, "w", encoding="utf-8") as file:
-                # Header Section
-                file.write("========================================================================================\n")
-                file.write("                             GOODWILL INVENTORY REPORT                                  \n")
-                file.write(f" Generated On: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
-                file.write("==============F==========================================================================\n\n")
+            with open(file_path, mode="w", newline="", encoding="utf-8") as file:
+                writer = csv.writer(file)
 
-                # Column Headers with Formatting Widths
-                header_fmt = "{:<22} {:<22} {:<18} {:<12} {:<8} {:<15}\n"
-                file.write(header_fmt.format("Name", "Time Modified", "Category", "Product ID", "Stock", "Optional ID"))
-                file.write("-" * 100 + "\n")
+                # Write Column Headers
+                writer.writerow([
+                    "Product Name", 
+                    "Time Modified", 
+                    "Category", 
+                    "Product ID", 
+                    "Stock Quantity", 
+                    "Optional ID"
+                ])
 
-                # Row Data
+                # Write Row Data from Treeview
                 for child in children:
                     row_values = self.tree.item(child, 'values')
-                    file.write(
-                        "{:<22} {:<22} {:<18} {:<12} {:<8} {:<15}\n".format(
-                            str(row_values[0])[:20],  # Truncate if long
-                            str(row_values[1])[:20],
-                            str(row_values[2])[:16],
-                            str(row_values[3])[:10],
-                            str(row_values[4]),
-                            str(row_values[5])[:14]
-                        )
-                    )
+                    writer.writerow([
+                        row_values[0],
+                        row_values[1],
+                        row_values[2],
+                        row_values[3],
+                        row_values[4],
+                        row_values[5]
+                    ])
 
-                file.write("\n" + "=" * 100 + "\n")
-                file.write(f"Total Items Exported: {len(children)}\n")
-
-            messagebox.showinfo("Export Successful", f"Data exported successfully to:\n{file_path}")
+            messagebox.showinfo("Export Successful", f"Data exported successfully to CSV:\n{file_path}")
 
         except Exception as e:
-            messagebox.showerror("Export Error", f"Failed to save file:\n{str(e)}")
+            messagebox.showerror("Export Error", f"Failed to save CSV file:\n{str(e)}")
 
     def open_update_stock_dialog(self):
         prod_id = self.get_selected_product_id()
