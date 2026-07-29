@@ -167,8 +167,8 @@ class InventoryCLI:
     }
 
     ALLOWED_USERS = {
-        "nathan" : "burnyourdread",
-        "billy" : "pursuingmytrueself",
+        "makoto" : "burnmydread",
+        "yu" : "pursuingmytrueself",
         "ren" : "wakeupgetup",
     }
 
