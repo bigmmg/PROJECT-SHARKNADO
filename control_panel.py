@@ -4,8 +4,7 @@ import csv
 import sys
 import getpass
 from typing import Optional
-
-#REPORTING FEATURES / TIME PROGRAMMING
+#Importing necessary features, including sqlite3, time, csv, sys (for system exits) and getpass (To hide password input)
 
 class Inventory:
     # Defining the __init__ function, sets the db_file name table_name based on information passed
@@ -26,7 +25,7 @@ class Inventory:
                    prodstock INTEGER NOT NULL,
                    prodopid TEXT);''')
             connection.commit()
-
+        # Table to track authentication lockouts / logins
             cursor.execute(f'''CREATE TABLE IF NOT EXISTS auth_lockout
                             (id INTEGER PRIMARY KEY,
                             failed_attempts INTEGER NOT NULL,
@@ -34,12 +33,14 @@ class Inventory:
 
             cursor.execute("INSERT OR IGNORE INTO auth_lockout (id, failed_attempts, lockout_until) VALUES (1, 0, 0)")
 
+    # Method used to get the amount of failed attempts from the authentication table
     def get_auth_state(self):
         with sqlite3.connect(self.db_file) as connection:
             cursor = connection.cursor()
             cursor.execute("SELECT failed_attempts, lockout_until FROM auth_lockout WHERE id = 1")
             return cursor.fetchone()
 
+    # Method used to set the number of failed attempts and lockout time
     def update_auth_state(self, failed_attempts, lockout_until):
         with sqlite3.connect(self.db_file) as connection:
             cursor = connection.cursor()
@@ -48,9 +49,9 @@ class Inventory:
                 (failed_attempts, lockout_until)
             )
             connection.commit()
-    
+
+    # Used to add items to the database
     def add_item(self, name, timemade, category, prod_id, stock, optional_id=None):
-        # Added 'f' prefix to convert these into f-strings for self.table_name
         with sqlite3.connect(self.db_file) as connection:
             cursor = connection.cursor()
 
@@ -84,7 +85,8 @@ class Inventory:
                 f"SELECT * FROM {self.table_name} WHERE prodID = ?", (prod_id,)
             )
             return cursor.fetchone()
-        
+
+    # Updates the time for auditing purposes by product ID anytime it's accessed 
     def update_time(self, prod_id, new_time):
         with sqlite3.connect(self.db_file) as connection:
             cursor = connection.cursor()
@@ -166,6 +168,7 @@ class InventoryCLI:
         "5": ("Stock", "prodstock"),
     }
 
+    # Dictionary of allowed users 
     ALLOWED_USERS = {
         "makoto" : "burnmydread",
         "yu" : "pursuingmytrueself",
@@ -177,6 +180,7 @@ class InventoryCLI:
         self.inventory = inventory
         self.current_user: Optional[str] = None
 
+    # Login prompt to check if input information is correct + lockout system for auditing
     def prompt_login(self):
 
         max_attempts = 3
@@ -302,6 +306,9 @@ Food[13]\nOffice Supplies[14]""")
 
     # Method that prints all rows of items, with an optional sort applied first
 
+
+    # Method that exports the inventory database as a CSV file, sorted by choice of user
+
     def export_file(self):
             sort_choice = self.prompt_sort_choice()
     
@@ -384,6 +391,7 @@ Food[13]\nOffice Supplies[14]""")
 
 
     # Method run after printing all items in order to sort by given category
+
     def prompt_sort_choice(self):
         print("\nSort by:")
         print("Name[1]\nTime[2]\nCategory[3]\nProduct ID[4]\nStock[5]\nNo Sort[N]")
@@ -396,6 +404,7 @@ Food[13]\nOffice Supplies[14]""")
         return None
 
     # Method for searching a product by ID
+
     def search_by_id(self):
         prod_id = input("Enter the product ID to search for: ").strip()
         row = self.inventory.search_by_id(prod_id)
@@ -412,6 +421,7 @@ Food[13]\nOffice Supplies[14]""")
             print(f"No product found with ID {prod_id}")
 
     # Method for updating the stock of an item
+
     def update_stock(self):
         prod_id = input("Enter the product ID to update: ").strip()
         row = self.inventory.search_by_id(prod_id)
@@ -462,6 +472,7 @@ Food[13]\nOffice Supplies[14]""")
             print(f"No product found with ID {prod_id}")
 
     # Method for deleting a product by ID
+
     def delete_product(self):
         prod_id = input("Enter the product ID to delete: ").strip()
         deleted = self.inventory.delete_product(prod_id)
@@ -471,6 +482,7 @@ Food[13]\nOffice Supplies[14]""")
             print("Product not found")
 
     # Method for updating the name of a product by ID
+    
     def update_name(self):
         prod_id = input("Enter the product ID to change the name: ").strip()
         new_name = input("Enter the new name for the product: ").strip()
@@ -522,7 +534,7 @@ Food[13]\nOffice Supplies[14]""")
             else:
                 print("Invalid choice. Please enter a number between 1 and 8.")
 
-# Launches the CLI and intializes the app
+
 if __name__ == "__main__":
     inventory = Inventory()
     cli = InventoryCLI(inventory)
