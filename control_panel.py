@@ -1,6 +1,9 @@
 import sqlite3
 import time
 import csv
+import sys
+import getpass
+from typing import Optional
 
 #REPORTING FEATURES / TIME PROGRAMMING
 
@@ -23,8 +26,29 @@ class Inventory:
                    prodstock INTEGER NOT NULL,
                    prodopid TEXT);''')
             connection.commit()
-            # Removed manual connection.close() to let 'with' manage it safely
 
+            cursor.execute(f'''CREATE TABLE IF NOT EXISTS auth_lockout
+                            (id INTEGER PRIMARY KEY,
+                            failed_attempts INTEGER NOT NULL,
+                            lockout_until REAL NOT NULL);''')
+
+            cursor.execute("INSERT OR IGNORE INTO auth_lockout (id, failed_attempts, lockout_until) VALUES (1, 0, 0)")
+
+    def get_auth_state(self):
+        with sqlite3.connect(self.db_file) as connection:
+            cursor = connection.cursor()
+            cursor.execute("SELECT failed_attempts, lockout_until FROM auth_lockout WHERE id = 1")
+            return cursor.fetchone()
+
+    def update_auth_state(self, failed_attempts, lockout_until):
+        with sqlite3.connect(self.db_file) as connection:
+            cursor = connection.cursor()
+            cursor.execute(
+                "UPDATE auth_lockout SET failed_attempts = ?, lockout_until = ? WHERE id = 1",
+                (failed_attempts, lockout_until)
+            )
+            connection.commit()
+    
     def add_item(self, name, timemade, category, prod_id, stock, optional_id=None):
         # Added 'f' prefix to convert these into f-strings for self.table_name
         with sqlite3.connect(self.db_file) as connection:
@@ -142,9 +166,50 @@ class InventoryCLI:
         "5": ("Stock", "prodstock"),
     }
 
+    ALLOWED_USERS = {
+        "nathan" : "burnyourdread",
+        "billy" : "pursuingmytrueself",
+        "ren" : "wakeupgetup",
+    }
+
     # __init__ to initialize the self and inventory classes
     def __init__(self, inventory: Inventory):
         self.inventory = inventory
+        self.current_user: Optional[str] = None
+
+    def prompt_login(self):
+
+        max_attempts = 3
+        lockout_duration = 60
+        
+
+        while True:
+            failed_attempts, lockout_until = self.inventory.get_auth_state()
+            current_time = time.time()
+
+            if current_time < lockout_until:
+                remaining = int(lockout_until - current_time)
+                print(f"INVALID LOGIN LOCKOUT\nPlease wait {remaining} seconds before trying to login again.")
+                sys.exit()
+            
+            print("Name:")
+            name = input(">>").strip()
+            password = getpass.getpass("Enter your password:")
+
+            if (name in self.ALLOWED_USERS and self.ALLOWED_USERS[name] == password):
+                print(f"\nLogin successful! Welcome, {name}.\n")
+                return name
+
+            failed_attempts += 1  
+            print("Invalid username or password, please try again.")
+
+            if failed_attempts >= max_attempts:
+                print(f"Locking system out for failed attempts.")
+                self.inventory.update_auth_state(0, current_time + lockout_duration)
+                sys.exit()
+            else:
+                self.inventory.update_auth_state(failed_attempts, 0)
+
 
     # Function used to prompt name
     def prompt_name(self):
@@ -157,10 +222,11 @@ class InventoryCLI:
                 return name
 
     # Function used to grab the approx time an item was catalogued or changed
-    def time_setter(self):
+    def time_setter(self) -> str:
         clock = time.localtime()
         format_min = time.strftime("%M", clock)
-        clock_formatted = f"{clock.tm_mon}-{clock.tm_mday}-{clock.tm_year} at {clock.tm_hour}:{format_min}"
+        user = self.current_user if self.current_user else "System"
+        clock_formatted = f"{clock.tm_mon}-{clock.tm_mday}-{clock.tm_year} at {clock.tm_hour}:{format_min} by {user}"
         return clock_formatted
     
     # Function used to prompt category
@@ -353,7 +419,7 @@ Food[13]\nOffice Supplies[14]""")
             print(f"No product found with ID {prod_id}")
             return
 
-        current_stock = row[3]
+        current_stock = row[4]
         print(f"Current stock for {prod_id}: {current_stock}")
         print("[S] Set exact stock value, [+] Increase stock, [-] Decrease stock")
         mode = input("Enter your choice: ").strip().lower()
@@ -420,6 +486,9 @@ Food[13]\nOffice Supplies[14]""")
 
     # Method to run the entire main menu
     def run(self):
+
+        self.current_user = self.prompt_login()
+
         while True:
             print("\nGoodwill Inventory Prototype System:")
             print("1. Print all items")
